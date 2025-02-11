@@ -1,4 +1,7 @@
 # euthymia
+Attention is all you need.
+
+不被吸引眼球，不被挑动情绪，拒绝互联网产品为了提高留存时间而做的无底线算计。
 
 ## tampermonkey/bilibili.js
 
