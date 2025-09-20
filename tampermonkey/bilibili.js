@@ -1,63 +1,85 @@
 // ==UserScript==
-// @name         Bilibili净化
+// @name         BilibiliVideo
 // @namespace    http://tampermonkey.net/
-// @version      2025-02-09
+// @version      2025-09-15
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.bilibili.com/*
-// @match        https://t.bilibili.com/*
+// @match        https://*.bilibili.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=bilibili.com
 // @grant        none
+// @run-at       document-start
 // ==/UserScript==
 
 (function() {
     'use strict';
-    // 你要模糊的 div 的选择器
-    const blurSelectors = ['.bili-dyn-card-video__stat__item', '.view', '.playinfo', '.carousel-inner__img', '.cover', '.bili-video-card__cover', '.bpx-player-ending-related', '.pic-box', '.bili-video-card__stats--left'];
-    const hideSelectors = ['.loc-mc-box', '.bili-dyn-topic-box', '.bili-dyn-live-users__item__living', '.bili-dyn-banner', '.trending'];
-
-    // 模糊处理函数
-    function blurDivs(selector) {
-        const divs = document.querySelectorAll(selector);
-        divs.forEach(div => {
-            div.style.filter = 'blur(5px)';
-        });
+    // 立即注入样式
+    const style = document.createElement('style');
+    style.id = 'hide-unwanted';
+    style.textContent = `
+        /* 你的选择器 */
+        #biliMainHeader, .right-container, .strip-ad-inner, .bpx-player-ending, .act-end, .recommended-swipe, aside.right, div.trending{
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            width: 0 !important;
+            overflow: hidden !important;
+        }
+    `;
+    // 确保样式被添加到最早的可用位置
+    if (document.documentElement) {
+        document.documentElement.appendChild(style);
     }
-    function hideDivs(selector) {
-        const divs = document.querySelectorAll(selector);
-        divs.forEach(div => {
-            div.style.display = 'none';
-        });
-    }
+    // 需要移除的参数列表
+    const paramsToRemove = [
+        'spm_id_from',
+        'vd_source',
+        'from_spmid',
+        'share_source',
+        'share_medium',
+        'share_plat',
+        'share_session_id',
+        'share_tag',
+        'share_times',
+        'timestamp',
+        'unique_k',
+        'from',
+        'seid'
+    ];
+    function cleanURL() {
+        const url = new URL(window.location.href);
+        let hasChanged = false;
 
-    // 初始模糊处理
-    blurSelectors.forEach((s) => {
-        blurDivs(s);
-    });
-    hideSelectors.forEach((s) => {
-        hideDivs(s);
-    });
-
-    // 监听 DOM 变化并处理新加载的内容
-    const observer = new MutationObserver((mutations) => {
-        console.log("muting: ", mutations[0].type);
-        const input = document.querySelectorAll('.nav-search-input');
-        input.forEach((i => { i.placeholder = ''; }));
-
-        mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-                blurSelectors.forEach((s) => {
-                    blurDivs(s);
-                });
-                hideSelectors.forEach((s) => {
-                    hideDivs(s);
-                });
+        // 检查并移除指定参数
+        paramsToRemove.forEach(param => {
+            if (url.searchParams.has(param)) {
+                url.searchParams.delete(param);
+                hasChanged = true;
             }
         });
-    });
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
+        // 如果URL有变化，使用replaceState更新地址栏
+        if (hasChanged) {
+            const cleanedURL = url.toString();
+            window.history.replaceState(null, '', cleanedURL);
+            console.log('已清理URL参数');
+        }
+    }
+
+    // 立即执行一次
+    cleanURL();
+    // 监听页面变化（针对单页应用）
+    let lastURL = window.location.href;
+    const urlObserver = new MutationObserver(() => {
+        const currentURL = window.location.href;
+        if (currentURL !== lastURL) {
+            lastURL = currentURL;
+            cleanURL();
+        }
+    });
+    // 开始监听
+    urlObserver.observe(document, {
+        subtree: true,
+        childList: true
     });
 })();
